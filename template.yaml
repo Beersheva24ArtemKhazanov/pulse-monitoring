@@ -8,11 +8,11 @@ Globals:
     Architectures:
       - x86_64
 Resources:
-  JumpRecognizerFunction:
+  PulseValuesReducerFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: jump-pulse-recognizer
-      Handler: telran.monitoring.App::handleRequest
+      CodeUri: pulse-values-reducer
+      Handler: telran.monitoring.AppReducer::handleRequest
       Policies:
         - Statement:
           - Effect: Allow
@@ -21,18 +21,19 @@ Resources:
             - dynamodb:*
             - s3:*
         - S3ReadPolicy:
-            BucketName: !Ref JumpRecognizerBucket
+            BucketName: !Ref AvgValuesBucket
         - S3WritePolicy:
-            BucketName: !Ref JumpRecognizerBucket 
+            BucketName: !Ref AvgValuesBucket    
       Environment:
         Variables:
           LOGGER_LEVEL: finest
-          STREAM_NAME: !Ref JumpDataStream
-          STREAM_CLASS_NAME: telran.monitoring.DynamoDbStreamJumpPulseData
-          BUCKET_NAME: !Ref JumpRecognizerBucket
+          STREAM_NAME: !Ref AvgValuesDataStream
+          REDUCING_SIZE: 5
+          REDUCING_TIME_WINDOW: 600000
+          STREAM_CLASS_NAME: telran.monitoring.DynamoDbStreamSensorData
+          BUCKET_NAME: !Ref AvgValuesBucket
+          LATEST_VALUES_SAVER_CLASS_NAME: "telran.monitoring.LatestDataSaverS3"
           REGION_FOR_AWS: !Sub ${AWS::Region}
-          LATEST_VALUES_SAVER_CLASS_NAME: telran.monitoring.LatestDataSaverS3
-         
       Events:
         DynamoDbItemInsert:
           Type: DynamoDB
@@ -43,7 +44,7 @@ Resources:
             FilterCriteria:
               Filters:
               - Pattern: '{"eventName": ["INSERT"]}'
-  
+            
   PulseValuesStream:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -63,7 +64,8 @@ Resources:
         WriteCapacityUnits: 5
       StreamSpecification:
         StreamViewType: NEW_IMAGE
-  JumpDataStream:
+ 
+  AvgValuesDataStream:
     Type: AWS::DynamoDB::Table
     Properties:
       KeySchema:
@@ -80,13 +82,38 @@ Resources:
         ReadCapacityUnits: 5
         WriteCapacityUnits: 5
       StreamSpecification:
-        StreamViewType: NEW_IMAGE
- 
-  JumpRecognizerBucket:
+        StreamViewType: NEW_IMAGE        
+  
+  ReducedValuesSaverFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: reduced-values-saver
+      Handler: telran.monitoring.AppReducedValuesSaver::handleRequest
+      Policies:
+        - Statement:
+          - Effect: Allow
+            Resource: '*' 
+            Action:
+            - dynamodb:*
+      Environment:
+        Variables:
+          LOGGER_LEVEL: finest
+          DB_PASSWORD: 12345.com
+      Events:
+        DynamoDbItemInsert:
+          Type: DynamoDB
+          Properties:
+            StartingPosition: LATEST
+            BatchSize: 1
+            Stream: !GetAtt AvgValuesDataStream.StreamArn
+            FilterCriteria:
+              Filters:
+              - Pattern: '{"eventName": ["INSERT"]}'
+  AvgValuesBucket:
     Type: AWS::S3::Bucket
     DeletionPolicy: Retain
     Properties:
-      BucketName: !Sub jump-recognizer-bucket-${AWS::AccountId}-${AWS::Region}
+      BucketName: !Sub avg-values-bucket-${AWS::AccountId}-${AWS::Region}
       VersioningConfiguration:
         Status: Enabled
       PublicAccessBlockConfiguration:
@@ -97,8 +124,9 @@ Resources:
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
-              SSEAlgorithm: AES256            
-
+              SSEAlgorithm: AES256
+      
+          
 
       
         

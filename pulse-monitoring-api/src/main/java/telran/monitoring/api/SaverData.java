@@ -1,6 +1,5 @@
 package telran.monitoring.api;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
 
 import telran.monitoring.logging.Logger;
