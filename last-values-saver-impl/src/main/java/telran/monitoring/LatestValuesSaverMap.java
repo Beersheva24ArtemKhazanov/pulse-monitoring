@@ -3,8 +3,14 @@ package telran.monitoring;
 import java.util.*;
 
 import telran.monitoring.api.*;
+import telran.monitoring.logging.Logger;
 
-public class LatestValuesSaverMap implements LatestValuesSaver{
+public class LatestValuesSaverMap extends AbstractDataSaverLogger{
+    protected LatestValuesSaverMap(Logger logger) {
+        super(logger);
+        
+    }
+
     private HashMap<Long, List<SensorData>> history = new HashMap<>();
     @Override
     public void addValue(SensorData sensorData) {

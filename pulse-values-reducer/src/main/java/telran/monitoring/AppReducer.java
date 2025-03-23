@@ -13,7 +13,7 @@ import telran.monitoring.api.SensorData;
 import telran.monitoring.logging.Logger;
 import telran.monitoring.logging.LoggerStandard;
 
-public class App {
+public class AppReducer {
     private static final String DEFAULT_STREAM_NAME = "average-pulse-values";
     private static final String DEFAULT_STREAM_CLASS_NAME = "telran.monitoring.DynamoDbStreamSensorData";
     private static final long DEFAULT_REDUCING_TIME_WINDOW = 10 * 60 * 1000;
@@ -26,10 +26,10 @@ public class App {
     MiddlewareDataStream<SensorData> dataStream;
     int reducingSize = getReducingSize();
     long reducingTimeWindow = getReducingTimeWindow();
-    LatestValuesSaver latestValuesSaver = new LatestValuesSaverMap();
+    LatestValuesSaver latestValuesSaver = new LatestValuesSaverMap(logger);
 
     @SuppressWarnings("unchecked")
-    public App() {
+    public AppReducer() {
         logger.log("config", "Stream name is " + streamName);
         try {
 
@@ -77,6 +77,7 @@ public class App {
 
     private String getStreamName() {
         String result = env.getOrDefault("STREAM_NAME", DEFAULT_STREAM_NAME);
+
         return result;
     }
 
@@ -129,7 +130,7 @@ public class App {
 
     private int getAvgValue(List<SensorData> latestData) {
         int res = (int) Math.round(latestData.stream().mapToInt(SensorData::value).average().orElse(0));
-        logger.log("finest", "Average pulse value is " + res);
+        logger.log("fine", "Average pulse value is " + res);
         return res;
     }
 

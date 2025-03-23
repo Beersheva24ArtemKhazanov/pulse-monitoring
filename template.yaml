@@ -170,6 +170,7 @@ Resources:
     Properties:
       CodeUri: range-data-provider
       Handler: telran.monitoring.AppRangeDataProvider::handleRequest
+      
       Environment: 
         Variables:
           DB_PASSWORD: 12345.Com
